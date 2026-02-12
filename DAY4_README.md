@@ -1,68 +1,72 @@
-# Day 4 — Deploy CrewAI as an API Service (2-hour live coding)
+# Day 4 — CLI-First Deployment & Optional API Delivery (2-hour live coding)
 
 ## 🎯 Title & Topic
-Ship the Multi-Agent Book Generator as an API — FastAPI, Uvicorn, and Demo-Ready Operations
+Productionizing the Multi-Agent Book Pipeline — Deploy with CLI as Primary, FastAPI as Optional Secondary Path
 
 ## Overview (long form)
 
-This Day 4 module completes the 4-day journey by converting the existing CrewAI flow into a simple API service that students can call from Postman, curl, or another app. Instead of teaching deployment only as scripts/CLI, this lesson focuses on API-first operational delivery.
+Day 4 completes the learning arc by moving from development workflows to deployment-ready operation. The primary path is CLI-first: run the existing flow in `main.py`, validate outputs, and package a repeatable runtime command sequence that works on local machines, remote VMs, and lightweight schedulers.
 
-Students will learn how to expose the current flow through minimal HTTP endpoints, run it with FastAPI + Uvicorn, validate requests/responses, and deploy it in a simple, reproducible way.
+This session is intentionally practical and constrained to a 2-hour classroom format. Students will standardize environment setup, run full generation through the existing pipeline, validate markdown artifacts, and apply operational checks for reliability.
 
-The class keeps the same instructor-friendly structure as previous days: clear timeline, setup, walkthrough, live coding, troubleshooting, quiz, exercises, and handoff checklist.
+An optional secondary path introduces a minimal FastAPI wrapper for occasional API usage. This path is additive and does not replace the CLI flow. The core system of record remains orchestration in `main.py`.
 
-By the end of Day 4, learners can run and present this project as a basic API service with a health endpoint and generation endpoint.
+By the end of the session, learners can confidently deploy and operate this project from the command line, and optionally expose a thin API endpoint for demos or integration.
 
 ## **SESSION FLOW**
 
 ### **What We'll Cover Today (Step-by-Step)**
 
 1. **Recap Days 1–3 and Day 4 outcomes** (10 min)
-  - Review foundations, concurrency, and output quality improvements
-  - Define API service deployment goals
-2. **Production readiness checklist walkthrough** (15 min)
-  - Environment variables, dependency pinning, path/import reliability
-  - API runtime conventions and logging
-3. **API architecture setup** (15 min)
-  - Add minimal service wrapper around existing flow
-  - Define request/response schema
-4. **Deployment options deep dive** (20 min)
-  - Option A: local API service (`uvicorn`)
-  - Option B: containerized API deployment
-5. **Live-coding: API deployment pipeline** (25 min)
-  - Start service and test `GET /health`
-  - Call `POST /generate-book` and verify output
-6. **Operations and monitoring basics** (10 min)
-  - API health checks, request latency, and error triage flow
-7. **Capstone demo runbook** (10 min)
-  - Student presentation script and API demo sequencing
-8. **Quiz + deployment debugging drill** (10 min)
-  - Validate understanding of API deployment failure handling
-9. **Wrap-up and post-course growth plan** (5 min)
-   - Final recommendations and next project extensions
+   - Confirm foundations: schema, fan-out, output assembly
+   - Define Day 4 goal: operational reliability
+2. **CLI deployment architecture walkthrough** (15 min)
+   - Trace production path in `main.py`
+   - Validate data contracts from `types.py`
+3. **Configuration and prompt surfaces review** (15 min)
+   - Review YAML files used at runtime
+   - Discuss safe production edits
+4. **Technical deep dive: runtime hardening** (20 min)
+   - Environment checks, logging, repeatable commands
+   - Output verification and failure handling
+5. **Live coding: deploy and run CLI flow end-to-end** (30 min)
+   - Execute generation pipeline
+   - Validate resulting markdown artifact
+6. **Optional secondary path: FastAPI adapter** (15 min)
+   - Add minimal API wrapper without changing core flow
+   - Demonstrate one request cycle
+7. **Troubleshooting + quiz + capstone demo script** (10 min)
+   - Rapid failure triage practice
+   - Short concept checks
+8. **Wrap-up, homework, and post-course growth path** (5 min)
 
 ## Learning Objectives (explicit)
 
 By the end of Day 4, learners will be able to:
 
-- Expose the CrewAI book flow through a simple API service.
-- Configure FastAPI + Uvicorn startup and runtime environment variables.
-- Validate `GET /health` and `POST /generate-book` endpoints.
-- Deploy API service locally and optionally in a container.
-- Present an end-to-end API capstone demo with troubleshooting confidence.
+- Deploy and run the full project using a CLI-first workflow.
+- Validate execution dependencies and environment variables.
+- Explain how `main.py` orchestrates outline, chapter writing, and save.
+- Identify where behavior is controlled in YAML config files.
+- Use an optional FastAPI wrapper as a secondary access path.
+- Troubleshoot common deployment/runtime failures quickly.
 
 ## Target audience
 
-- Learners who completed Days 1–3 and can run the project locally.
-- Developers interested in operationalizing LLM pipelines as services.
-- Students preparing portfolio-ready project delivery.
+- Learners who completed Days 1–3.
+- Python developers comfortable with terminal-based workflows.
+- Teams needing practical, low-overhead deployment for agent pipelines.
 
 ## Prerequisites (detailed)
 
-- Project works locally with outline + chapter generation paths.
-- Python environment and API keys already configured.
-- Basic familiarity with shell commands, HTTP requests, and optional Docker usage.
-- Access to a machine/VM where environment variables can be set securely.
+- Python 3.10+ installed.
+- Working virtual environment and dependency installation.
+- Valid model/tool API keys.
+- Ability to run terminal commands from project root.
+- Prior understanding of:
+  - `main.py` flow lifecycle
+  - `types.py` output models
+  - crew/task YAML configuration files
 
 ## Setup steps (full commands and checks)
 
@@ -75,7 +79,7 @@ source .venv/bin/activate
 2. Confirm core dependencies:
 
 ```bash
-pip show crewai crewai-tools pydantic fastapi uvicorn
+pip show crewai crewai-tools pydantic
 ```
 
 3. Export required environment variables:
@@ -86,417 +90,360 @@ export SERPER_API_KEY="..."
 export PYTHONPATH="$PWD"
 ```
 
-4. Smoke test project locally first:
+4. Optional: save reusable runtime env file:
+
+```bash
+cat > .env.runtime <<'EOF'
+export OPENAI_API_KEY="sk-..."
+export SERPER_API_KEY="..."
+export PYTHONPATH="$PWD"
+EOF
+```
+
+5. Smoke-test primary CLI flow:
 
 ```bash
 python main.py
 ```
 
-5. Start API service locally:
+6. Confirm markdown artifact is created in project root.
+
+## Detailed Project Orientation (walkthrough)
+
+Review files in this order:
+
+- [main.py](main.py): canonical runtime entrypoint and orchestration (`generate_book_outline` → `write_chapters` → `join_and_save_chapter`).
+- [types.py](types.py): strict output contracts (`ChapterOutline`, `BookOutline`, `Chapter`).
+- [crews/outline_book_crew/outline_crew.py](crews/outline_book_crew/outline_crew.py): outline crew wiring and `output_pydantic=BookOutline`.
+- [crews/outline_book_crew/config/agents.yaml](crews/outline_book_crew/config/agents.yaml): outline agent behavior.
+- [crews/outline_book_crew/config/tasks.yaml](crews/outline_book_crew/config/tasks.yaml): outline task constraints.
+- [crews/write_book_chapter_crew/write_book_chapter_crew.py](crews/write_book_chapter_crew/write_book_chapter_crew.py): chapter crew wiring and `output_pydantic=Chapter`.
+- [crews/write_book_chapter_crew/config/agents.yaml](crews/write_book_chapter_crew/config/agents.yaml): chapter agent behavior.
+- [crews/write_book_chapter_crew/config/tasks.yaml](crews/write_book_chapter_crew/config/tasks.yaml): chapter output constraints.
+
+Instructor note: keep `main.py` as the source of truth. API is optional and should call existing flow logic.
+
+## CLI Runtime Deep Dive — `main.py` as deployment contract
+
+- Entrypoint: `python main.py`
+- Flow lifecycle:
+  1. Build outline via `OutlineCrew`
+  2. Generate chapters concurrently via `WriteBookChapterCrew`
+  3. Join and save markdown artifact
+- Deployment rule for class: if CLI path is stable, system is deployable.
+
+## Config Deep Dive — YAML controls without orchestration changes
+
+- Prompt and task behavior lives in YAML files.
+- Safer production tuning order:
+  1. edit `tasks.yaml` constraints,
+  2. then `agents.yaml` style/role guidance,
+  3. avoid frequent orchestration edits in `main.py`.
+
+## Deployment Strategy Walkthrough — practical options for this project
+
+### Option A: CLI local/VM deployment (recommended primary)
+
+1. Activate env and export keys.
+2. Run `python main.py`.
+3. Validate logs and markdown output.
+4. Repeat with reusable env file/script.
+5. Use this as classroom and production baseline.
+
+### Option B: CLI containerized deployment (portable)
+
+1. Build image with Python + dependencies.
+2. Inject keys at runtime.
+3. Run container executing `python main.py`.
+4. Mount volume for output artifacts.
+5. Keep image stateless and persist outputs externally.
+
+### Option C: Optional API adapter (secondary path)
+
+1. Add thin `api_service.py` wrapper.
+2. Keep endpoint logic calling existing flow.
+3. Use for occasional integrations, not as primary course runtime.
+
+## Live-coding block: Implement Deployment Steps (step-by-step)
+
+### Part A — Primary CLI deployment
+
+Step 0 — Confirm runtime context:
+
+```bash
+python -V
+which python
+pwd
+```
+
+Step 1 — Validate environment and keys:
+
+```bash
+source .venv/bin/activate
+env | grep -E "OPENAI_API_KEY|SERPER_API_KEY|PYTHONPATH"
+```
+
+Step 2 — Run canonical flow:
+
+```bash
+python main.py
+```
+
+Step 3 — Verify artifact:
+
+```bash
+ls -1 *.md
+head -n 40 *.md
+grep -n "^# " *.md
+```
+
+Step 4 — Package repeatable run command:
+
+```bash
+source .venv/bin/activate && source .env.runtime && python main.py
+```
+
+### Part B — Optional API adapter (secondary)
+
+Step 5 — Install API libraries only if needed:
+
+```bash
+pip install fastapi uvicorn
+```
+
+Step 6 — Create `api_service.py` thin wrapper calling existing flow.
+
+Step 7 — Run optional API service:
 
 ```bash
 uvicorn api_service:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-6. Test health endpoint:
+Step 8 — Test optional endpoints:
 
 ```bash
 curl http://127.0.0.1:8000/health
 ```
 
-## Detailed Project Orientation (walkthrough)
+```bash
+curl -X POST http://127.0.0.1:8000/generate-book \
+  -H "Content-Type: application/json" \
+  -d '{"title":"AI in 2026","topic":"AI trends","goal":"Generate a practical guide"}'
+```
 
-Day 4 file focus:
+Instructor note: if time is limited, complete Part A only and keep Part B conceptual.
 
-- [main.py](main.py): runtime entrypoint and full orchestration path.
-- [types.py](types.py): schema contracts used across pipeline.
-- [api_service.py](api_service.py): FastAPI app, endpoint routing, request/response handling.
-- [crews/outline_book_crew/config/agents.yaml](crews/outline_book_crew/config/agents.yaml): outline behavior settings.
-- [crews/outline_book_crew/config/tasks.yaml](crews/outline_book_crew/config/tasks.yaml): outline task constraints.
-- [crews/write_book_chapter_crew/config/agents.yaml](crews/write_book_chapter_crew/config/agents.yaml): chapter writer/researcher behavior.
-- [crews/write_book_chapter_crew/config/tasks.yaml](crews/write_book_chapter_crew/config/tasks.yaml): chapter quality controls.
+## Speaker Notes & Teaching Tips
 
-Instructor note: Day 4 emphasis is API service reliability and deployment confidence, not feature expansion.
+- Reiterate throughout: CLI is the production baseline for this course.
+- Use one stable topic/goal payload for reproducible results.
+- Demonstrate one failure and one fix live (missing env var is ideal).
+- Keep API section short and optional; avoid framework deep dives.
 
-## Deployment Strategy Walkthrough — practical options for this project
+## Deep-dive: Operations, Logging, and Recovery Basics
 
-### Option A: Local API deployment (recommended for class)
+Minimal operations model:
 
-Use this for fastest student success in one class session.
+1. Validate secrets at startup.
+2. Run CLI flow and capture logs.
+3. Verify output artifact exists and is non-empty.
+4. Triage failures by layer:
+   - env/config,
+   - dependency/import,
+   - model/tool call,
+   - output assembly/write.
 
-1. Install dependencies including `fastapi` and `uvicorn`.
-2. Run `uvicorn api_service:app --host 0.0.0.0 --port 8000`.
-3. Test `GET /health`.
-4. Send request to `POST /generate-book`.
-5. Verify JSON response and generated `.md` artifact.
+Recovery policy:
 
-### Option B: Containerized API deployment (portable option)
+- Fail fast for missing keys.
+- Retry once for transient external errors.
+- Preserve logs for debugging.
 
-Use this when you want consistent runtime across machines.
+## Troubleshooting Checklist (common errors and fixes)
 
-1. Build image with API server dependencies.
-2. Inject API keys at runtime.
-3. Run container exposing port `8000`.
-4. Call API endpoints from host.
-5. Mount volume if artifact persistence is required.
+- `ModuleNotFoundError` for project imports
+  - Run from repo root and export `PYTHONPATH="$PWD"`.
 
-### Option C: Managed hosting (brief mention only)
+- Missing API keys / auth failures
+  - Re-export `OPENAI_API_KEY` and `SERPER_API_KEY`.
 
-Use this for production extension after class.
+- No markdown output generated
+  - Check exceptions in chapter generation and save stage.
+  - Confirm write permissions in project directory.
 
-1. Deploy container to a managed platform.
-2. Configure secrets via platform secret manager.
-3. Add auth/rate limiting before public exposure.
+- Runtime slow or unstable
+  - Reduce chapter scope for classroom runs.
 
-## Live-coding block: Implement API Service Deployment (step-by-step)
+- Optional API returns but no generation occurs
+  - Ensure endpoint calls flow logic from `main.py`.
 
-Step 0 — Create `api_service.py` with minimal endpoints:
+## Short Quiz (answers included)
+
+Q1: What is the primary deployment path for Day 4?
+
+- Answer: CLI execution using `python main.py`.
+
+Q2: Which file contains end-to-end orchestration?
+
+- Answer: `main.py`.
+
+Q3: Which file defines strict output contracts?
+
+- Answer: `types.py`.
+
+Q4: Where should behavior tuning happen first?
+
+- Answer: YAML task/agent configs under `crews/*/config/`.
+
+Q5: Is FastAPI required for Day 4 success?
+
+- Answer: No, it is optional.
+
+## Exercises / Try It Yourself (expanded — many step-by-step tasks)
+
+Exercise 1 — Build one-command CLI run script (beginner, 15 min)
+
+- Goal: Execute full flow with one command.
+- Steps:
+  1. Create `run_day4.sh`.
+  2. Activate env, source runtime vars, run `python main.py`.
+  3. Verify markdown output.
+
+Exercise 2 — Failure injection and recovery (intermediate, 20 min)
+
+- Goal: Practice deployment debugging.
+- Steps:
+  1. Unset one API key and run.
+  2. Capture root-cause error.
+  3. Restore key and rerun successfully.
+
+Exercise 3 — YAML tuning for output consistency (intermediate, 20 min)
+
+- Goal: Improve repeatability.
+- Steps:
+  1. Edit chapter task constraints in [crews/write_book_chapter_crew/config/tasks.yaml](crews/write_book_chapter_crew/config/tasks.yaml).
+  2. Re-run CLI flow.
+  3. Compare output structure quality.
+
+Exercise 4 — Optional API wrapper drill (advanced, 20–25 min)
+
+- Goal: Expose minimal endpoint without changing core flow.
+- Steps:
+  1. Implement thin FastAPI adapter.
+  2. Add `/health` and `/generate-book`.
+  3. Trigger one generation and verify output.
+
+## Expected outputs and validation
+
+After Day 4 completion, learners should verify:
+
+- CLI run `python main.py` completes end-to-end.
+- A markdown artifact is generated in project root.
+- Logs show outline generation, chapter writing, and save completion.
+- Students can identify files controlling behavior and reliability.
+- Optional: API endpoint triggers same flow for occasional use.
+
+## Example full code snippets (copyable)
+
+CLI-first run wrapper:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+source .venv/bin/activate
+source .env.runtime
+python main.py
+```
+
+Optional FastAPI thin adapter:
 
 ```python
 from fastapi import FastAPI
 from pydantic import BaseModel
+from main import kickoff
 
-app = FastAPI(title="CrewAI Book Generator API")
+app = FastAPI(title="Optional CrewAI Adapter")
 
-class GenerateBookRequest(BaseModel):
-    title: str
-    topic: str
-    goal: str
+class GenerateRequest(BaseModel):
+    title: str | None = None
+    topic: str | None = None
+    goal: str | None = None
 
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
 @app.post("/generate-book")
-def generate_book(payload: GenerateBookRequest):
-    # call existing flow/service function here
-    return {"status": "accepted", "title": payload.title}
-```
-
-Step 1 — Add dependencies for API runtime:
-
-```bash
-pip install fastapi uvicorn
-```
-
-Step 2 — Start API server:
-
-```bash
-uvicorn api_service:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Step 3 — Test health endpoint:
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-Step 4 — Test generation endpoint:
-
-```bash
-curl -X POST http://127.0.0.1:8000/generate-book \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "AI in 2026",
-    "topic": "Current state of AI across industries",
-    "goal": "Generate a practical multi-chapter book"
-  }'
-```
-
-Step 5 — Add container deployment for API service:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-COPY . /app
-ENV PYTHONPATH=/app
-
-CMD ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Step 6 — Build and run container:
-
-```bash
-docker build -t crewai-book-api:latest .
-docker run --rm \
-  -p 8000:8000 \
-  -e OPENAI_API_KEY="$OPENAI_API_KEY" \
-  -e SERPER_API_KEY="$SERPER_API_KEY" \
-  crewai-book-api:latest
-```
-
-Step 7 — Validate service after deployment:
-
-```bash
-curl http://127.0.0.1:8000/health
-```
-
-Step 8 — Keep Day 4 service simple (synchronous endpoint first).
-
-## Speaker Notes & Teaching Tips
-
-- Keep Day 4 scoped to one success path: `health` + `generate-book`.
-- Explain clearly that synchronous endpoint is chosen for teaching simplicity.
-- Use a fixed payload for repeatable demo results.
-- Mention background jobs as an advanced extension, not a Day 4 requirement.
-
-## Deep-dive: API Operations, Logging, and Recovery Basics
-
-Explain minimal operations model:
-
-1. Validate secrets at startup.
-2. Start API server and capture logs.
-3. Verify health endpoint and generation endpoint behavior.
-4. Verify output artifact (if file save remains enabled) exists and is non-empty.
-4. If failure occurs, triage by layer:
-   - env/config,
-  - API routing/validation,
-  - dependency/import,
-  - model/tool call,
-  - output assembly/write.
-
-Introduce simple recovery policy:
-
-- Fail fast for missing keys.
-- Use clear HTTP error responses on invalid input.
-- Preserve logs for failed API requests.
-
-## Troubleshooting Checklist (common errors and fixes)
-
-- API server fails to start due to missing package
-  - Install `fastapi` and `uvicorn` in active environment.
-
-- API request returns `422 Unprocessable Entity`
-  - Check JSON payload fields and types against request schema.
-
-- `POST /generate-book` is too slow or times out
-  - Reduce chapter scope for class demo and keep synchronous mode for MVP.
-
-- Docker build fails due to dependency issues
-  - Regenerate `requirements.txt` and rebuild with clean cache.
-
-- Container runs but API not reachable
-  - Verify `-p 8000:8000` port mapping and container logs.
-
-- API/auth failures in deployed environment
-  - Verify secrets are passed at runtime and not hardcoded.
-
-- Runtime import path errors
-  - Ensure `PYTHONPATH` is set correctly inside deployment environment.
-
-## Short Quiz (answers included)
-
-Q1: Why should deployment runs validate required environment variables at startup?
-
-- Answer: To fail early with clear diagnostics instead of producing partial or misleading runs.
-
-Q2: What are the two MVP endpoints taught on Day 4?
-
-- Answer: `GET /health` and `POST /generate-book`.
-
-Q3: What is the main advantage of container deployment for this project?
-
-- Answer: Environment consistency and portability across machines.
-
-Q4: What must be validated before calling `POST /generate-book`?
-
-- Answer: JSON payload shape (`title`, `topic`, `goal`) and required API keys.
-
-Q5: Why is synchronous endpoint mode acceptable for Day 4?
-
-- Answer: It keeps the teaching flow simple and understandable; background jobs can be introduced later.
-
-Q6: What must be persisted after a deployment run?
-
-- Answer: Generated markdown artifacts and relevant logs.
-
-## Exercises / Try It Yourself (expanded — many step-by-step tasks)
-
-Exercise 1 — Build a reproducible run checklist (beginner, 15–20 min)
-
-- Goal: Produce a one-page checklist for local API service runs.
-- Steps:
-  1. List dependencies, env vars, and `uvicorn` startup command.
-  2. Add endpoint verification steps (`/health`, `/generate-book`).
-  3. Add top 3 failure/recovery actions.
-
-Exercise 2 — Harden request validation (intermediate, 20 min)
-
-- Goal: Improve API request validation and error responses.
-- Steps:
-  1. Add stricter request model fields.
-  2. Return meaningful 4xx messages on invalid input.
-  3. Test invalid and valid requests.
-
-Exercise 3 — Containerized API run (intermediate, 20–30 min)
-
-- Goal: Run API service inside Docker and hit it from host.
-- Steps:
-  1. Build Docker image.
-  2. Run with env vars and `-p 8000:8000`.
-  3. Validate endpoint response from host.
-
-Exercise 4 — Basic API smoke test script (advanced, 25–35 min)
-
-- Goal: Automate service health + generation endpoint checks.
-- Steps:
-  1. Assert `/health` returns `status=ok`.
-  2. Send sample generate request.
-  3. Assert non-empty response fields.
-
-Exercise 5 — Capstone demo runbook (optional, 20 min)
-
-- Goal: Create a polished API demo flow for final presentation.
-- Steps:
-  1. Define fixed request payload.
-  2. Prepare expected endpoint outputs and timing.
-  3. Add backup plan for API/tool downtime.
-
-## Expected outputs and validation
-
-After Day 4 completion, learners should verify:
-
-- API service runs via repeatable startup command.
-- `GET /health` returns successful readiness response.
-- `POST /generate-book` accepts valid payload and returns useful output.
-- Container path (if used) serves API on mapped port.
-- Students can deliver a stable end-to-end API demo.
-
-## Example full code snippets (copyable)
-
-Minimal API service (`api_service.py`):
-
-```python
-from fastapi import FastAPI
-from pydantic import BaseModel
-
-app = FastAPI(title="CrewAI Book Generator API")
-
-class GenerateBookRequest(BaseModel):
-  title: str
-  topic: str
-  goal: str
-
-@app.get("/health")
-def health():
-  return {"status": "ok"}
-
-@app.post("/generate-book")
-def generate_book(payload: GenerateBookRequest):
-  # integrate existing flow kickoff here
-  return {
-    "status": "accepted",
-    "title": payload.title,
-    "message": "Generation started"
-  }
-```
-
-API run command:
-
-```bash
-uvicorn api_service:app --host 0.0.0.0 --port 8000 --reload
-```
-
-Minimal Dockerfile:
-
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-COPY requirements.txt /app/requirements.txt
-RUN pip install --no-cache-dir -r /app/requirements.txt
-
-COPY . /app
-ENV PYTHONPATH=/app
-
-CMD ["uvicorn", "api_service:app", "--host", "0.0.0.0", "--port", "8000"]
-```
-
-Basic API smoke-test script:
-
-```bash
-#!/usr/bin/env bash
-set -euo pipefail
-
-health=$(curl -s http://127.0.0.1:8000/health)
-echo "$health" | grep -q '"status":"ok"\|"status": "ok"'
-
-response=$(curl -s -X POST http://127.0.0.1:8000/generate-book \
-  -H "Content-Type: application/json" \
-  -d '{"title":"AI in 2026","topic":"AI trends","goal":"Generate a short book"}')
-
-if [[ -z "${response:-}" ]]; then
-  echo "Empty response from /generate-book"
-  exit 1
-fi
-
-echo "API smoke test passed"
+def generate_book(_: GenerateRequest):
+    kickoff()
+    return {"status": "completed", "mode": "cli-flow-invoked"}
 ```
 
 ## Troubleshooting (expanded with examples)
 
-- Error: `docker: command not found`
-  - Cause: Docker not installed or not in PATH.
-  - Fix: Install Docker Desktop and confirm daemon is running.
+- Error: `No module named 'write_a_book_with_flows'`
+  - Cause: import path not resolved.
+  - Fix: run from repo root and set `PYTHONPATH="$PWD"`.
 
-- Error: `404 Not Found` on API route
-  - Cause: wrong path or server started with wrong app module.
-  - Fix: verify route path and run `uvicorn api_service:app ...`.
+- Error: malformed outline output
+  - Cause: weak constraints in [crews/outline_book_crew/config/tasks.yaml](crews/outline_book_crew/config/tasks.yaml).
+  - Fix: tighten schema/structure instructions.
 
-- Error: `422` when posting JSON
-  - Cause: missing required fields in payload.
-  - Fix: send `title`, `topic`, and `goal` with correct types.
+- Error: chapter fields missing
+  - Cause: output mismatch vs `Chapter` model.
+  - Fix: strengthen output instructions in [crews/write_book_chapter_crew/config/tasks.yaml](crews/write_book_chapter_crew/config/tasks.yaml).
 
-- Error: API call is very slow
-  - Cause: full chapter generation is compute/network heavy.
-  - Fix: use smaller scope for class demo and explain background-job extension.
+- Error: optional API responds but generation stale
+  - Cause: adapter not mapping runtime values correctly.
+  - Fix: wire payload fields into flow state before kickoff.
 
 ## Homework (post-course capstone)
 
-- Prepare a complete API deployment handoff package (startup command + env checklist + smoke test).
-- Record one 5-minute capstone API demo (`/health` + `/generate-book`).
-- Write one improvement proposal for production hardening (auth, retries, or background jobs).
+- Create a repeatable CLI deployment runbook for your machine/VM.
+- Run two production-style topics and compare output quality.
+- Add one reliability enhancement in [main.py](main.py) (logging, validation, or safer save behavior).
+- Optional: complete API adapter and document when to use it vs CLI.
 
 ## Advanced topics to mention (briefly, for curious learners)
 
-- API authentication and rate limiting.
-- Background job queue for long-running generation requests.
-- Multi-environment deployment (dev/stage/prod) for API services.
+- Queue-based asynchronous API execution.
+- Retry policy for failed chapter tasks.
+- Structured run metadata and observability dashboards.
+- Artifact versioning and external storage backends.
 
 ## Glossary
 
-- API service: application exposed through HTTP endpoints.
-- Smoke test: quick check that core service behavior works after deployment.
-- Stateless container: container that does not persist mutable runtime state internally.
-- Runbook: documented sequence of steps to operate and troubleshoot a system.
+- CLI-first deployment: operating system primarily via terminal commands.
+- Orchestration flow: ordered runtime stages in `main.py`.
+- Typed output contract: schema-enforced output via Pydantic models.
+- Thin API adapter: minimal HTTP layer that calls existing flow logic.
 
 ## Additional resources
 
-- Docker docs: https://docs.docker.com
-- FastAPI docs: https://fastapi.tiangolo.com
-- Uvicorn docs: https://www.uvicorn.org
 - CrewAI docs: https://docs.crewai.com
+- Pydantic docs: https://docs.pydantic.dev
+- Python asyncio docs: https://docs.python.org/3/library/asyncio.html
+- FastAPI docs (optional): https://fastapi.tiangolo.com
 
 ## Full checklist for the instructor
 
-1. Verify local baseline run before deployment demo.
-2. Demonstrate API service startup (`uvicorn`) end-to-end.
-3. Demonstrate `GET /health` and `POST /generate-book` live.
-4. Demonstrate optional containerized API path.
-5. Run quiz and one deployment exercise.
-6. Complete capstone API demo handoff and post-course guidance.
+1. Confirm every learner can run `python main.py`.
+2. Validate environment variables before live run.
+3. Walk deployment-relevant files in orientation order.
+4. Complete one full CLI run and inspect output.
+5. Run troubleshooting drill with one intentional failure.
+6. Deliver quiz and one hands-on exercise.
+7. Cover optional API adapter only after CLI success.
 
 ---
 
 Files referenced in this lesson:
 - [main.py](main.py)
 - [types.py](types.py)
-- [api_service.py](api_service.py)
+- [crews/outline_book_crew/outline_crew.py](crews/outline_book_crew/outline_crew.py)
 - [crews/outline_book_crew/config/agents.yaml](crews/outline_book_crew/config/agents.yaml)
 - [crews/outline_book_crew/config/tasks.yaml](crews/outline_book_crew/config/tasks.yaml)
+- [crews/write_book_chapter_crew/write_book_chapter_crew.py](crews/write_book_chapter_crew/write_book_chapter_crew.py)
 - [crews/write_book_chapter_crew/config/agents.yaml](crews/write_book_chapter_crew/config/agents.yaml)
 - [crews/write_book_chapter_crew/config/tasks.yaml](crews/write_book_chapter_crew/config/tasks.yaml)
